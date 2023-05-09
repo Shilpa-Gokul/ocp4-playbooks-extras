@@ -3,42 +3,42 @@
 This repository consists of additional ansible playbooks for the following:
 
 1. Run e2e tests against an existing OCP4 cluster
-1. Deploy Common Services
-1. Run scale tests against an existing OCP4 cluster
-1. Expose OCP internal image registry
-1. Run alerts configuration
-1. Run migration and rollback of Container Network Interface (CNI) cluster network provider
-1. Run OVN-Kubernetes CNI Validation 
-1. Run Global Secret Update
-1. Run etcd data encryption and decryption
-1. Run IBM Block storage CSI (Raw block)
-1. Run OCP ClusterLogForwarding Installation
-1. Go Lang Installation
-1. Run OCP Node Feature Discovery Operator Installation
-1. Run SBO installation and running smoke acceptance tests
-1. Configure HTPasswd Identity Provider
-1. Set custom catalog source
-1. Run Horizontal Pod Autoscaler installation and verification
-1. Jenkins installation and verification
-1. Vertical Pod Autoscaler installation, verification and e2e
-1. Setup persistent storage using hostPath
-1. PowerVC CSI driver installation and validation
-1. Setup persistent storage using iSCSI
-1. OC CLI-plug-ins automation testing
-1. Run cluster health check
-1. Run Compliance Operator installation and e2e 
-1. Hypershift deployment on PowerVS
-1. Run File Integrity Operator and e2e
-1. Configure and test IPA identity provider
-1. Enable monitoring for user-defined projects
-1. Configure and test Request-Header identity provider
-1. Descheduler deployment and running e2e test
-1. Configure and run verification-tests
-1. Enabling Stream Control Transmission Protocol (SCTP) and run e2e
-1. Deploy Kubernetes NMState Operator and run e2e
-1. Enable pod disruption budget (pdb)
-1. Scheduler profile configuration and run e2e tests
-
+2. Deploy Common Services
+3. Run scale tests against an existing OCP4 cluster
+4. Expose OCP internal image registry
+5. Run alerts configuration
+6. Run migration and rollback of Container Network Interface (CNI) cluster network provider
+7. Run OVN-Kubernetes CNI Validation 
+8. Run Global Secret Update
+9. Run etcd data encryption and decryption
+10. Run IBM Block storage CSI (Raw block)
+11. Run OCP ClusterLogForwarding Installation
+12. Go Lang Installation
+13. Run OCP Node Feature Discovery Operator Installation
+14. Run SBO installation and running smoke acceptance tests
+15. Configure HTPasswd Identity Provider
+16. Set custom catalog source
+17. Run Horizontal Pod Autoscaler installation and verification
+18. Jenkins installation and verification
+19. Vertical Pod Autoscaler installation, verification and e2e
+20. Setup persistent storage using hostPath
+21. PowerVC CSI driver installation and validation
+22. Setup persistent storage using iSCSI
+23. OC CLI-plug-ins automation testing
+24. Run cluster health check
+25. Run Compliance Operator installation and e2e 
+26. Hypershift deployment on PowerVS
+27. Run File Integrity Operator and e2e
+28. Configure and test IPA identity provider
+29. Enable monitoring for user-defined projects
+30. Configure and test Request-Header identity provider
+31. Descheduler deployment and running e2e test
+32. Configure and run verification-tests
+33. Enabling Stream Control Transmission Protocol (SCTP) and run e2e
+34. Deploy Kubernetes NMState Operator and run e2e
+35. Enable pod disruption budget (pdb)
+36. Scheduler profile configuration and run e2e tests
+37. Deploy MetalLB operator and run e2e
 ## Assumptions:
 
  - A healthy OpenShift 4 cluster in running state.
