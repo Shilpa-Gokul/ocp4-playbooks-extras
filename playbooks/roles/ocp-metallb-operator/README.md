@@ -23,7 +23,7 @@ Role Variables
 | metallb_golang_tarball      | no       | https://go.dev/dl/go1.18.6.linux-ppc64le.tar.gz   | HTTPS URL for golang tarball                                                                                                   |
 | metallb_e2e                 | no       | false                                             | Set it to true to run e2e                                                                                                      |
 | metallb_e2e_git_repository  | no       | https://github.com/openshift/metallb-operator.git | Git respository for e2e tests                                                                                                  |
-| metallb_git_branch          | no       | master                                            | Git branch for e2e                                                                                                             |
+| metallb_git_branch          | no       | main                                              | Git branch for e2e                                                                                                             |
 | metallb_cleanup             | no       | true                                              | Flag is used to clean metallb Operator resources                                                                               |
 
 Dependencies

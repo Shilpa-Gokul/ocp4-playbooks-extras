@@ -95,12 +95,13 @@
     until: metallb_namespace.stdout|int == 0
     retries: 15
     delay: 30
+
+  - name: Delete the workspace
+    file:
+      path: "{{ metallb_directory }}"
+      state: "absent"
+      mode: '0755'
   when: metallb_cleanup
-#  - name: Delete the workspace
-#    file:
-#      path: "{{ nmstate_directory }}"
-#      state: "absent"
-#      mode: '0755'
 
 
 - name: Deploy the MetalLB Operator
@@ -236,69 +237,37 @@
     failed_when: metallb_speaker.stdout|int != metallb_nodes.stdout|int
   when: metallb_install_operator or metallb_e2e
 
-#- name: Run e2e test cases
-#  block:
-#  - name: Install dependencies for running e2e tests
-#    dnf:
-#      name: make
-#      state: present
-#
-#  - name: Include role for installation of Go lang
-#    include_role:
-#      name: golang-installation
-#    vars:
-#      go_tarball: "{{ metallb_golang_tarball }}"
-#      golang_path: "/usr/local"
-#
-#  - name: Clone the metallb-operator repository
-#    git:
-#      repo: "{{ metallb_e2e_git_repository }}"
-#      dest: "{{ metallb_directory }}/metallb-operator"
-#      version: "{{ metallb_git_branch }}"
-#
-#  # Exporting these variables as environment variables and metallb resource has been deployed by the same ansible playbook
-#  - name: Remove lines
-#    lineinfile:
-#      path: "{{ metallb_directory }}/kubernetes-nmstate/hack/ocp-e2e-tests-handler.sh"
-#      regexp: '{{ item }}'
-#      state: absent
-#      backrefs: yes
-#    loop:
-#    - "export PRIMARY_NIC=enp2s0"
-#    - "export PRIMARY_NIC=enp1s0"
-#    - "export FIRST_SECONDARY_NIC=enp3s0"
-#    - "export SECOND_SECONDARY_NIC=enp4s0"
-#    - "make cluster-sync-operator"
-#    - "oc create -f test/e2e/nmstate.yaml"
-#
-#  - name: Updating namespace name with metallb-system
-#    replace:
-#      path: "{{ nmstate_directory }}/kubernetes-nmstate/hack/ocp-e2e-tests-handler.sh"
-#      regexp: '{{ item.namespace_name }}'
-#      replace: '{{ item.new_namespace_name }}'
-#    loop:
-#    - { namespace_name: " nmstate ", new_namespace_name: " metallb-system "}
-#
-#  - name: Updating machine config file
-#    replace:
-#      path: "{{ nmstate_directory }}/kubernetes-nmstate/test/e2e/machineconfigs.yaml"
-#      regexp: '{{ item.old_string }}'
-#      replace: '{{ item.new_string }}'
-#    loop:
-#    - { old_string: "enp3s0", new_string: "env33" }
-#    - { old_string: "enp4s0", new_string: "env34" }
-#    - { old_string: "Connection", new_string: "connection" }
-#
-#  - name: Run kubernetes-nmstate e2e tests
-#    shell: sh hack/ocp-e2e-tests-handler.sh > {{ nmstate_directory }}/nmstate_e2e_output.txt
-#    args:
-#      chdir: "{{ nmstate_directory }}/kubernetes-nmstate"
-#    ignore_errors: true
-#    environment: "{{ nmstate_e2e_env }}"
-#
-#  - name: Removing the color codes from output
-#    ansible.builtin.replace:
-#      path: "{{ nmstate_directory }}/nmstate_e2e_output.txt"
-#      regexp: '\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])'
-#      replace: ""
-#  when: nmstate_e2e
+- name: Run e2e test cases
+  block:
+  - name: Install dependencies for running e2e tests
+    dnf:
+      name: make
+      state: present
+
+  - name: Include role for installation of Go lang
+    include_role:
+      name: golang-installation
+    vars:
+      go_tarball: "{{ metallb_golang_tarball }}"
+      golang_path: "/usr/local"
+
+  - name: Clone the metallb-operator repository
+    git:
+      repo: "{{ metallb_e2e_git_repository }}"
+      dest: "{{ metallb_directory }}/metallb-operator"
+      version: "{{ metallb_git_branch }}"
+
+  - name: Run metallb-operator e2e tests
+    shell: make test-e2e > {{ metallb_directory }}/metallb_e2e_output.txt
+    args:
+      chdir: "{{ metallb_directory }}/metallb-operator"
+    ignore_errors: true
+    environment: "{{ metallb_e2e_env }}"
+
+  - name: Removing the color codes from output
+    ansible.builtin.replace:
+      path: "{{ metallb_directory }}/metallb_e2e_output.txt"
+      regexp: '\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])'
+      replace: ""
+  when: metallb_e2e
+
