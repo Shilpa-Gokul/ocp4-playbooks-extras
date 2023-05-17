@@ -230,11 +230,19 @@
   - name: Check the number of nodes running
     shell: oc get node | grep "Ready" | wc -l
     register: metallb_nodes
-
+  - debug:
+      msg: 
+      - metallb_nodes {{metallb_nodes}}
   - name: Check if the daemon set for the speaker is running
     shell: oc get daemonset -n metallb-system speaker | awk '{if ($1 ~ /speaker/) print $6}'
     register: metallb_speaker
-    failed_when: metallb_speaker.stdout|int != metallb_nodes.stdout|int
+    until: metallb_speaker.stdout|int == metallb_nodes.stdout|int
+    retries: 10
+    delay: 60
+  - debug:
+      msg:
+      - metallb_speaker {{metallb_speaker}}
+      - metallb_nodes {{metallb_nodes}}
   when: metallb_install_operator or metallb_e2e
 
 - name: Run e2e test cases
@@ -269,5 +277,129 @@
       path: "{{ metallb_directory }}/metallb_e2e_output.txt"
       regexp: '\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])'
       replace: ""
+  when: metallb_e2e
+- name: Validate the controller and speaker pods can be scheduled on the tainted nodes based on the tolerations in metallb CR
+  block:
+    - name: Check the number of nodes running
+      shell: oc get node | grep "Ready" | wc -l
+      register: metallb_nodes
+
+    - name: Check if the daemon set for the speaker is running before tainting
+      shell: oc get daemonset -n metallb-system speaker | awk '{if ($1 ~ /speaker/) print $6}'
+      register: metallb_speaker_untainted
+      until: metallb_nodes.stdout|int == metallb_speaker_untainted.stdout|int
+      retries: 10
+      delay: 60
+
+    - name: Taint master and worker nodes
+      shell: |
+        oc adm taint node master-0 master-group=infra:NoSchedule
+        oc adm taint node worker-0 worker-group=infra:NoSchedule
+      register: taint_output
+      ignore_errors: true
+
+    - name: Create a metalLB CR with tolerations for worker-group in both controller and speaker pods
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: MetalLB
+          metadata:
+            name: metallb
+            namespace: metallb-system
+          spec:
+            controllerTolerations:
+              - effect: NoSchedule
+                key: worker-group
+                operator: Equal
+                value: infra
+            logLevel: debug
+            speakerTolerations:
+              - effect: NoSchedule
+                key: worker-group
+                operator: Equal
+                value: infra
+
+    - name: Check if all the pods are running
+      shell: oc get pods -n metallb-system --no-headers | grep -v "Running\|Completed" | wc -l
+      register: metallb_pods
+      until: metallb_pods.stdout|int == 0 and metallb_pods.stderr == ""
+      retries: 10
+      delay: 30
+
+    - name: Check if the deployment for the controller is running
+      shell: oc get deployment -n metallb-system controller | awk '{if ($1 ~ /controller/) print $4}'
+      register: metallb_controller
+      until: metallb_controller.stdout|int == 1
+      retries: 10
+      delay: 40
+    
+    - name: Check if the daemon set are created properly
+      shell: oc get daemonset -n metallb-system speaker | awk '{if ($1 ~ /speaker/) print $6}'
+      register: metallb_speaker
+      until: metallb_speaker.stdout|int == metallb_speaker_untainted.stdout|int-1
+      retries: 10
+      delay: 40
+
+    - name: Get the instance of the metallb operator
+      shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
+      register: metallb_instance
+      ignore_errors: true
+
+    - name: Delete the MetalLB CR which has toleration for worker group
+      kubernetes.core.k8s:
+        state: absent
+        api_version: metallb.io/v1beta1
+        kind: MetalLB
+        name: "{{ metallb_instance.stdout }}"
+        namespace: metallb-system
+      when: metallb_instance.stdout|length > 0
+
+    - name: Check if the speakers are deleted
+      shell: oc get daemonset -n metallb-system speaker
+      register: metallb_speaker
+      ignore_errors: true
+      failed_when: "'NotFound' not in metallb_speaker.stderr"
+
+    - name: Create a metalLB CR with tolerations for master-group in both controller and speaker pods
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: MetalLB
+          metadata:
+            name: metallb
+            namespace: metallb-system
+          spec:
+            controllerTolerations:
+              - effect: NoSchedule
+                key: master-group
+                operator: Equal
+                value: infra
+            logLevel: debug
+            speakerTolerations:
+              - effect: NoSchedule
+                key: master-group
+                operator: Equal
+                value: infra
+
+    - name: Check if the daemon set are created properly
+      shell: oc get daemonset -n metallb-system speaker | awk '{if ($1 ~ /speaker/) print $6}'
+      register: metallb_speaker
+      until: metallb_speaker.stdout|int == metallb_speaker_untainted.stdout|int-1
+      retries: 10
+      delay: 40
+
+    - name: Verify that no speaker pod is running on worker-0
+      shell: oc get pod -n metallb-system -o wide | awk '{if (($1 ~ /speaker/) && ($7=="worker-0")) print $7}' | wc -l
+      register: metallb_speaker
+      failed_when: metallb_speaker.stdout|int > 0
+
+    - name: Untaint master and worker nodes
+      shell: |
+        oc adm taint node master-0 master-group=infra:NoSchedule-
+        oc adm taint node worker-0 worker-group=infra:NoSchedule-
+      register: taint_output
+      ignore_errors: true
   when: metallb_e2e
 
