@@ -730,7 +730,17 @@
         name: "{{ metallb_instance.stdout }}"
         namespace: metallb-system
       when: metallb_instance.stdout|length > 0
+
+    - name: Delete the nginx pod created during the test
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Pod
+        name: nginx-test
+        namespace: metallb-system
+
   when: metallb_e2e
+
 # Validate Community creation and update
 - name: Validate Community creation and update
   block:
@@ -766,4 +776,117 @@
       register: community_output
       failed_when: "'duplicate definition of community' not in community_output.msg"
       ignore_errors: true
-  when: metallb_ext
+  when: metallb_e2e
+
+# Verify L2 LoadBalancer service type are created on non cloud clusters
+- name: Verify L2 LoadBalancer service type are created on non cloud clusters
+  block:
+    - name: Create CR for metallb on worker node
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: MetalLB
+          metadata:
+            name: metallb
+            namespace: metallb-system
+          spec:
+            nodeSelector:
+              node-role.kubernetes.io/worker: ''
+
+    - name: Check if all the pods are running
+      shell: oc get pods -n metallb-system --no-headers | grep -v "Running\|Completed" | wc -l
+      register: metallb_pods
+      until: metallb_pods.stdout|int == 0 and metallb_pods.stderr == ""
+      retries: 10
+      delay: 60
+
+    - name: Create a project
+      shell: oc new-project test1
+
+    - name: Configure an address pool in the namespace where metallb is installed
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: IPAddressPool
+          metadata:
+            name: address-pool-silver
+            namespace: metallb-system
+          spec:
+            protocol: layer2
+            addresses:
+              - 9.114.98.36-9.114.98.36
+              - 9.114.99.246-9.114.99.246
+
+    - name: Create a replica set and service of type LoadBalanncer
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: ReplicaSet
+          metadata:
+            name: hello-world
+            namespace: test1
+            labels:
+              app: hello-world
+          spec:
+            selector:
+              matchLabels:
+                app: hello-world
+            replicas: 2
+            template:
+              metadata:
+                labels:
+                  app: hello-world
+              spec:
+                containers:
+                  - name: hello-world
+                    image: quay.io/openshifttest/hello-openshift:1.2.0
+                    imagePullPolicy: Always
+                    ports:
+                      - containerPort: 8080
+                        protocol: TCP
+
+    - name: Create a replica set and service of type LoadBalanncer
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: hello-world
+            namespace: test1
+            annotations:
+              metallb.universe.tf/address-pool: address-pool-silver
+          spec:
+            selector:
+              app: hello-world
+            ports:
+              - port: 80
+                targetPort: 8080
+                protocol: TCP
+            type: LoadBalancer
+
+    - name: Check if all the pods are running
+      shell: oc get pods -n test1 --no-headers | grep "Running\|Completed" | wc -l
+      register: metallb_pods
+      until: metallb_pods.stdout|int == 2
+      retries: 5
+      delay: 20
+
+    - name: Check if the replicaset is proper
+      shell: oc get rs -n test1 --no-headers | awk '{if ($1 ~ /^hello/) print $4}'
+      register: metallb_rs
+      failed_when: metallb_rs.stdout|int != 2
+
+    - name: Check if the loadbalancer service is proper
+      shell: oc get svc -n test1 --no-headers | awk '{if ($2 ~ /LoadBalancer/)  print $4}'
+      register: metallb_svc
+      failed_when: metallb_svc.stdout|length < 0
+
+    # Verification
+  when: metallb_e2e
+
+
+
