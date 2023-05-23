@@ -1311,7 +1311,12 @@
       register: svc_count
       failed_when: svc_count.stdout|int != 2
       
-    # TODO: verify reachability using curl command from master node
+    # verify reachability using curl command from master node
+    - name: Check if the service is reachable
+      shell: oc debug node/master-0 -- chroot /host curl -I http://9.114.99.71:27017
+      register: metallb_svc
+      failed_when: "'200 OK' not in metallb_svc.stdout"
+
     - name: Delete the IP address pool
       kubernetes.core.k8s:
         state: absent
