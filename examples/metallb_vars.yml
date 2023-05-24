@@ -10,3 +10,5 @@ metallb_e2e: true
 metallb_e2e_git_repository: "https://github.com/openshift/metallb-operator.git"
 metallb_git_branch: "main"
 metallb_cleanup: true
+metallb_frr_ver: "frr-8"
+metallb_frr_repo: "https://rpm.frrouting.org/repo/{{metallb_frr_ver}}-repo-1-0.el9.noarch.rpm"

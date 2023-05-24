@@ -801,6 +801,10 @@
       retries: 10
       delay: 30
 
+    - name: Delete the project if it exists already
+      shell: oc delete project test1
+      ignore_errors: true
+
     - name: Create a project
       shell: oc new-project test1
 
@@ -1001,6 +1005,10 @@
       shell: oc get IPaddresspool -n metallb-system | grep "address-pool-static" | wc -l
       register: metallb_adpool
       failed_when: metallb_adpool.stdout|int != 1
+
+    - name: Delete the project if it exists already
+      shell: oc delete project test
+      ignore_errors: true
 
     - name: Create a new project test
       shell: oc new-project test
@@ -1237,6 +1245,10 @@
             protocol: layer2
             addresses:
               - 9.114.99.71-9.114.99.71
+              
+    - name: Delete the project if it exists already
+      shell: oc delete project test
+      ignore_errors: true
 
     - name: Create new project
       shell: oc new-project test
@@ -1519,37 +1531,6 @@
       ignore_errors: true
       failed_when: "'duplicate definition' not in l2adverror.msg"
 
-    # Edit L2 advertisement object to add non existent node to see error- Doesnt throw error
-#    - name: Edit L2 advertisement object to add non existent node to see error
-#      kubernetes.core.k8s:
-#        state: present
-#        definition:
-#          apiVersion: metallb.io/v1beta1
-#          kind: L2Advertisement
-#          metadata:
-#            name: l2-adv
-#            namespace: metallb-system
-#          spec:
-#            ipAddressPoolSelectors:
-#              - matchExpressions:
-#                - key: zone
-#                  operator: In
-#                  values:
-#                    - east
-#            ipAddressPools:
-#              - ip-addresspool-l2
-#            nodeSelectors:
-#              - matchExpressions:
-#                - key: kubernetes.io/hostname
-#                  operator: In
-#                  values:
-#                    - worker-0
-#                    - worker-123
-#      register: l2adverror
-#      ignore_errors: true
-#      failed_when: "'duplicate definition' not in l2adverror.msg"
-  
-
     # Delete the L2 advertisement and addresspool
     - name: Delete L2 advertisement
       kubernetes.core.k8s:
@@ -1579,5 +1560,389 @@
           kind: IPAddressPool
           metadata:
             name: ip-addresspool-l2-a
+            namespace: metallb-system
+  when: metallb_e2e
+
+# Verify the LoadBalancer service uses the right protocol based on address available from L2 or BGP address pool
+- name: Verify the LoadBalancer service uses the right protocol based on address available from L2 or BGP address pool
+  block:
+    - name: Install metallb speakers only on the worker nodes by creating the metallb CR.
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: MetalLB
+          metadata:
+            name: metallb
+            namespace: metallb-system
+          spec:
+            nodeSelector:
+              node-role.kubernetes.io/worker: ""
+    - name: Verify the speakers and controller pods running
+      shell: oc get pods -n metallb-system --no-headers | grep -v "Running\|Completed" | wc -l
+      register: metallb_pods
+      until: metallb_pods.stdout|int == 0 and metallb_pods.stderr == ""
+      retries: 10
+      delay: 60
+
+    - name: Configure FRR on bastion
+      shell: |
+        FRRVER="{{ metallb_frr_ver }}"
+        curl -O "{{ metallb_frr_repo }}"
+        sudo yum install ./$FRRVER*
+        sudo yum install frr
+        systemctl status frr
+        systemctl restart frr
+        systemctl status frr
+      register: frrconf
+
+    - name: Open port 179 on bastion
+      shell: |
+        sudo firewall-cmd --add-port=179/tcp
+        sudo firewall-cmd --add-port=179/udp
+    # Add conf and zebra files
+    # Get the speaker pods ip address
+    - name: Verify the speakers and controller pods running
+      shell: oc get pods -n metallb-system -o wide | awk '{if ($1 ~ /^speaker/) print $6}'
+      register: speaker_pods
+      failed_when: speaker_pods.stdout|int != 2
+
+    - name: Add conf details
+      blockinfile:
+        path: /etc/frr/frr.conf
+        block: |
+          debug bgp updates
+          debug bgp neighbor
+          debug bgp nht
+          debug bfd peer
+          log file /tmp/frr.log debugging
+          log timestamp precision 3
+
+          router bgp 64521
+           bgp router-id {{ ansible_default_ipv4.address }}
+           timers bgp 3 15
+           no bgp ebgp-requires-policy
+           no bgp default ipv4-unicast
+           no bgp network import-check
+           neighbor ocpmetallb peer-group
+           neighbor ocpmetallb remote-as 64521
+            neighbor {{ speaker_pods.stdout_lines[0] }} peer-group ocpmetallb
+            neighbor {{ speaker_pods.stdout_lines[1] }} peer-group ocpmetallb
+
+           address-family ipv4 unicast
+            neighbor {{ speaker_pods.stdout_lines[0] }} next-hop-self
+            neighbor {{ speaker_pods.stdout_lines[0] }} activate
+            neighbor {{ speaker_pods.stdout_lines[1] }} next-hop-self
+            neighbor {{ speaker_pods.stdout_lines[1] }} activate
+        state: present
+        backup: yes
+
+    - name: Add details in zebra.conf
+      blockinfile:
+        path: /etc/frr/zebra.conf
+        block: |
+          hostname {{ ansible_hostname }}
+          debug zebra nht
+          interface eth0
+           ip address {{ ansible_default_ipv4.address }}/22
+
+    - name: Create IP Address pool for layer 2
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: IPAddressPool
+          metadata:
+            name: address-pool-silver-l2
+            namespace: metallb-system
+          spec:
+            protocol: layer2
+            addresses:
+              - 9.114.98.36-9.114.98.36
+
+    - name: Create IP Address pool for bgp
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: IPAddressPool
+          metadata:
+            name: address-pool-silver-bgp
+            namespace: metallb-system
+          spec:
+            protocol: bgp
+            autoAssign: true
+            addresses:
+              - 9.114.99.71/32
+              - 9.114.99.140/32
+
+    - name: Create BGP Peer
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: BGPPeer
+          metadata:
+            name: peer-no-bfd
+            namespace: metallb-system
+          spec:
+            myASN: 65500
+            peerASN: 64521
+            peerAddress: {{ ansible_default_ipv4.address }}
+
+    - name: Check if the bgppeer is created successfully
+      shell: oc get bgppeer -n metallb-system --no-headers | wc -l
+      register: bgppeer
+      failed_when: bgppeer.stdout|int != 1
+
+    - name: Delete the project if it exists already
+      shell: oc delete project test
+      ignore_errors: true
+
+    - name: Create a project
+      shell: oc new-project test
+
+    - name: Create a replica set
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: ReplicaSet
+          metadata:
+            name: hello-world
+            namespace: test
+            labels:
+              app: hello-world
+          spec:
+            selector:
+              matchLabels:
+                app: hello-world
+            replicas: 2
+            template:
+              metadata:
+                labels:
+                  app: hello-world
+              spec:
+                containers:
+                  - name: hello-world
+                    image: quay.io/openshifttest/hello-openshift:1.2.0
+                    imagePullPolicy: Always
+                    ports:
+                      - containerPort: 8080
+                        protocol: TCP
+
+    - name: Create a service
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: hello-world
+            namespace: test
+          spec:
+            selector:
+              app: hello-world
+            ports:
+              - port: 80
+                targetPort: 8080
+                protocol: TCP
+            type: LoadBalancer
+
+    - name: Check if the loadbalancer service is proper
+      shell: oc get svc -n test --no-headers | awk '{if ($2 ~ /LoadBalancer/)  print $4}'
+      register: metallb_svc
+      failed_when: metallb_svc.stdout == "<pending>"
+
+    - name: Fetch the speaker pod name
+      shell: oc get pods -n metallb-system -o wide | awk '{if ($1 ~ /^speaker/) print $1}'
+      register: speaker_pods
+      failed_when: speaker_pods.stdout_lines|length != 2
+
+    # check show-running-config
+    - name: check show-running-config
+      shell: oc exec -n metallb-system {{ speaker_pods.stdout_lines[0] }} -c frr -- vtysh -c "show running-config"
+      register: running_config
+      failed_when: running_config.stderr != ""
+
+    - name: check show bgp neighbor
+      shell: oc exec -n metallb-system {{ speaker_pods.stdout_lines[0] }} -c frr -- vtysh -c "show bgp neighbor"
+      register: bgp_neighbor
+      failed_when: bgp_neighbor.stderr != ""
+
+    - name: Create a replica set
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: ReplicaSet
+          metadata:
+            name: hello-world-new
+            namespace: default
+            labels:
+              app: hello-world-new
+          spec:
+            selector:
+              matchLabels:
+                app: hello-world-new
+            replicas: 2
+            template:
+              metadata:
+                labels:
+                  app: hello-world-new
+              spec:
+                containers:
+                  - name: hello-world-new
+                    image: quay.io/openshifttest/hello-openshift:1.2.0
+                    imagePullPolicy: Always
+                    ports:
+                      - containerPort: 8080
+                        protocol: TCP
+
+    - name: Create a service with externalTrafficPolicy 'Local'
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: hello-world-new
+            namespace: test
+          spec:
+            selector:
+              app: hello-world-new
+            ports:
+              - port: 80
+                targetPort: 8080
+                protocol: TCP
+            type: LoadBalancer
+            externalTrafficPolicy: Local
+
+    - name: Check if the loadbalancer service is proper
+      shell: oc get svc -n default --no-headers | awk '{if ($2 ~ /hello-world-new/)  print $4}'
+      register: metallb_svc
+      failed_when: metallb_svc.stdout == "<pending>"
+
+    # validate the externaltraffic policy
+
+    - name: Create a replica set
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: ReplicaSet
+          metadata:
+            name: hello-world-new-1
+            namespace: default
+            labels:
+              app: hello-world-new-1
+          spec:
+            selector:
+              matchLabels:
+                app: hello-world-new-1
+            replicas: 2
+            template:
+              metadata:
+                labels:
+                  app: hello-world-new-1
+              spec:
+                containers:
+                  - name: hello-world-new-1
+                    image: quay.io/openshifttest/hello-openshift:1.2.0
+                    imagePullPolicy: Always
+                    ports:
+                      - containerPort: 8080
+                        protocol: TCP
+
+    - name: Create a service with externalTrafficPolicy 'Local'
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: hello-world-new-1
+            namespace: test
+          spec:
+            selector:
+              app: hello-world-new-1
+            ports:
+              - port: 80
+                targetPort: 8080
+                protocol: TCP
+            type: LoadBalancer
+            externalTrafficPolicy: Local
+
+    - name: Check if the loadbalancer service is proper
+      shell: oc get svc -n default --no-headers | awk '{if ($2 ~ /hello-world-new-1/)  print $4}'
+      register: metallb_svc
+      failed_when: metallb_svc.stdout == "<pending>"
+
+    - name: Delete the replica set
+      kubernetes.core.k8s:
+        state: absent
+        api_version: apps/v1
+        kind: ReplicaSet
+        name: hello-world-new-1
+        namespace: default
+
+    - name: Delete the service
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Service
+        name: hello-world-new-1
+        namespace: default
+
+    - name: Delete the replica set
+      kubernetes.core.k8s:
+        state: absent
+        api_version: apps/v1
+        kind: ReplicaSet
+        name: hello-world-new
+        namespace: default
+
+    - name: Delete the service
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Service
+        name: hello-world-new
+        namespace: default
+
+    - name: Delete the replica set
+      kubernetes.core.k8s:
+        state: absent
+        api_version: apps/v1
+        kind: ReplicaSet
+        name: hello-world
+        namespace: test
+
+    - name: Delete the service
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Service
+        name: hello-world
+        namespace: test
+
+    - name: Create IP Address pool for bgp
+      kubernetes.core.k8s:
+        state: absent
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: IPAddressPool
+          metadata:
+            name: address-pool-silver-bgp
+            namespace: metallb-system
+
+    - name: Create IP Address pool for bgp
+      kubernetes.core.k8s:
+        state: absent
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: IPAddressPool
+          metadata:
+            name: address-pool-silver-l2
             namespace: metallb-system
   when: metallb_e2e
