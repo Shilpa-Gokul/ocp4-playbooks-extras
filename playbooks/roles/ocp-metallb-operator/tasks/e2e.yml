@@ -608,7 +608,9 @@
   - name: Check if the loadbalancer service is proper
     shell: oc get svc -n test1 --no-headers | awk '{if ($2 ~ /LoadBalancer/)  print $4}'
     register: metallb_svc
-    failed_when: metallb_svc.stdout == "<pending>"
+    until: metallb_svc.stdout != "<pending>"
+    retries: 10
+    delay: 40
 
   # Verification
   - name: Check if the service is reachable
@@ -713,6 +715,7 @@
     shell: oc get pods -n metallb-system --no-headers | grep "speaker\|^controller" | wc -l
     register: metallb_pods
     failed_when: metallb_pods.stdout|int < 0
+
   - name: Get the instance of the metallb operator
     shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
     register: metallb_instance
@@ -836,7 +839,7 @@
   - name: Check the service EXTERNAL_IP
     shell: oc get svc --no-headers | awk '{if ($1 ~ /^hello/) print $4}'
     register: svc_ip
-    failed_when: svc_ip.stdout != "{{ l2_address[0] }}"
+    until: svc_ip.stdout == "{{ l2_address[0] }}"
     retries: 10
     delay: 40
 
@@ -1466,7 +1469,9 @@
   - name: Check if the loadbalancer service is proper
     shell: oc get svc -n test --no-headers | awk '{if ($2 ~ /LoadBalancer/)  print $4}'
     register: metallb_svc
-    failed_when: metallb_svc.stdout == "<pending>"
+    until: metallb_svc.stdout != "<pending>"
+    retries: 10
+    delay: 40
 
   - name: Fetch the speaker pod name
     shell: oc get pods -n metallb-system -o wide | awk '{if ($1 ~ /^speaker/) print $1}'

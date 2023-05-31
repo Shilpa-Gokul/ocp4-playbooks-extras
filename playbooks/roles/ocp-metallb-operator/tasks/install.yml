@@ -237,6 +237,20 @@
       until: metallb_speaker.stdout|int == metallb_nodes.stdout|int
       retries: 10
       delay: 60
+
+    - name: Get the instance of the metallb operator
+      shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
+      register: metallb_instance
+      ignore_errors: true
+
+    - name: Delete the instance of the metallb operator
+      kubernetes.core.k8s:
+        state: absent
+        api_version: metallb.io/v1beta1
+        kind: MetalLB
+        name: "{{ metallb_instance.stdout }}"
+        namespace: metallb-system
+      when: metallb_instance.stdout|length > 0
   when: metallb_install_operator or metallb_e2e
 
 - name: Run e2e test cases
@@ -258,12 +272,6 @@
         repo: "{{ metallb_e2e_git_repository }}"
         dest: "{{ metallb_directory }}/metallb-operator"
         version: "{{ metallb_git_branch }}"
-
-    - name: Increase the timeout as the cleanup takes time
-      replace:
-        path: "{{ metallb_directory }}/metallb-operator/test/e2e/metallb/metallb.go"
-        regexp: '(\s*DeployTimeout\s*\=\s*time\.Minute\s*\*\s*)(\d+)'
-        replace: '\g<1>5'
 
     - name: Run metallb-operator e2e tests
       shell: make test-e2e > {{ metallb_directory }}/metallb_e2e_output.txt
