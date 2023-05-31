@@ -14,10 +14,9 @@ metallb_frr_ver: "frr-8"
 metallb_frr_repo: "https://rpm.frrouting.org/repo/{{metallb_frr_ver}}-repo-1-0.el9.noarch.rpm"
 test_image: "quay.io/openshifttest/hello-openshift:1.2.0"
 l2_address:
-  - "9.47.90.117"
-  - "9.47.90.118"
+  - "9.114.98.190"
+  - "9.114.98.191"
 bgp_address:
-  - "9.47.90.202"
-  - "9.47.90.145"
+  - "9.114.98.199"
 
 

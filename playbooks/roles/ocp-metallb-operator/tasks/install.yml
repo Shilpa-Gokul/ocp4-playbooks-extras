@@ -262,8 +262,8 @@
     - name: Increase the timeout as the cleanup takes time
       replace:
         path: "{{ metallb_directory }}/metallb-operator/test/e2e/metallb/metallb.go"
-        regexp: '\s*DeployTimeout\s*\=\s*time\.Minute\s*\*\s*\d+'
-        replace: '\nDeployTimeout = time.Minute * 5'
+        regexp: '(\s*DeployTimeout\s*\=\s*time\.Minute\s*\*\s*)(\d+)'
+        replace: '\g<1>5'
 
     - name: Run metallb-operator e2e tests
       shell: make test-e2e > {{ metallb_directory }}/metallb_e2e_output.txt
