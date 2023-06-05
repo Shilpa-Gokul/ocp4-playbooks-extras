@@ -315,7 +315,8 @@ nmstate_cleanup: true
 # ocp-metallb-operator vars
 metallb_enabled: false
 metallb_install_operator: true
-metallb_catalogsource_image: "quay.io/openshift-release-dev/ocp-release-nightly:iib-int-index-art-operators-4.13"
+ocp_version: "4.13"
+metallb_catalogsource_image: "quay.io/openshift-release-dev/ocp-release-nightly:iib-int-index-art-operators-{{ ocp_version }}"
 metallb_catalogsource: "redhat-operators-stage"
 metallb_upgrade_channel: "stable"
 metallb_directory: "/tmp/metallb"

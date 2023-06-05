@@ -4,4 +4,4 @@ metallb_e2e_env:
   PATH: "/usr/local/go/bin:{{ ansible_env.PATH }}"
   KUBECONFIG: "{{ ansible_env.HOME }}/.kube/config"
   IS_OPENSHIFT: true
-  HANDLER_NAMESPACE: metallb-system
+  NAMESPACE: metallb-system
