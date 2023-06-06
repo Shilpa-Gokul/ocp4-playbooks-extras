@@ -111,6 +111,7 @@
         - name: Include the global-secret-update role
           include_role:
             name: global-secret-update
+          when: metallb_enable_global_secret
 
         - name: Set fact variable for catalog source name
           set_fact:
