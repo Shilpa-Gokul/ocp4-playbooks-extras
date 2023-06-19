@@ -239,12 +239,16 @@
       retries: 10
       delay: 60
 
+  when: metallb_install_operator or metallb_e2e
+
+- name: Run e2e test cases
+  block:
     - name: Get the instance of the metallb operator
       shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
       register: metallb_instance
       ignore_errors: true
 
-    - name: Delete the instance of the metallb operator
+    - name: Delete the existing instance of the metallb operator as the e2e tests creates a new instance
       kubernetes.core.k8s:
         state: absent
         api_version: metallb.io/v1beta1
@@ -252,10 +256,7 @@
         name: "{{ metallb_instance.stdout }}"
         namespace: metallb-system
       when: metallb_instance.stdout|length > 0
-  when: metallb_install_operator or metallb_e2e
 
-- name: Run e2e test cases
-  block:
     - name: Install dependencies for running e2e tests
       dnf:
         name: make
@@ -287,5 +288,6 @@
         regexp: '\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])'
         replace: ""
   when: metallb_e2e
+
 
 
