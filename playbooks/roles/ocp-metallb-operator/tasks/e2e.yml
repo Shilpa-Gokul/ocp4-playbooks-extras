@@ -168,9 +168,9 @@
           namespace: metallb-system
         spec:
           controllerNodeSelector:
-            kubernetes.io/hostname: {{ worker_node.stdout }}
+            kubernetes.io/hostname: "{{ worker_node.stdout }}"
           nodeSelector:
-            node-role.kubernetes.io/worker: {{ worker_node.stdout }}
+            node-role.kubernetes.io/worker: "{{ worker_node.stdout }}"
 
   - name: Check if the controller pod is getting created only on the mentioned worker based on node selector
     shell: oc get pods -n metallb-system -o wide --no-headers | awk '{if ($1 ~ /^controller/) print $7}'
@@ -284,7 +284,7 @@
                         - key: metadata.name
                           operator: In
                           values:
-                            - {{ worker_nodes.stdout_lines[0] }}
+                            - "{{ worker_nodes.stdout_lines[0] }}"
             speakerConfig:
               affinity:
                 nodeAffinity:
@@ -294,7 +294,7 @@
                           - key: metadata.name
                             operator: In
                             values:
-                              - {{ worker_nodes.stdout_lines[1] }}
+                              - "{{ worker_nodes.stdout_lines[1] }}"
 
   # Verification of node affinity using matchFields
   - name: Check if the controller is getting created on worker 0
@@ -1229,7 +1229,7 @@
                 - key: kubernetes.io/hostname
                   operator: In
                   values:
-                    - {{ worker_node.stdout }}
+                    - "{{ worker_node.stdout }}"
 
   - name: Edit L2 advertisement object to add same node to see error
     kubernetes.core.k8s:
@@ -1254,8 +1254,8 @@
                 - key: kubernetes.io/hostname
                   operator: In
                   values:
-                    - {{ worker_node.stdout }}
-                    - {{ worker_node.stdout }}
+                    - "{{ worker_node.stdout }}"
+                    - "{{ worker_node.stdout }}"
     register: l2adverror
     ignore_errors: true
     failed_when: "'duplicate definition' not in l2adverror.msg"
