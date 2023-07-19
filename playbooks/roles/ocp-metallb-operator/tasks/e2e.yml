@@ -175,7 +175,7 @@
   - name: Check if the controller pod is getting created only on the mentioned worker based on node selector
     shell: oc get pods -n metallb-system -o wide --no-headers | awk '{if ($1 ~ /^controller/) print $7}'
     register: metallb_controller_pod
-    failed_when: "'$worker_node.stdout' not in metallb_controller_pod.stdout"
+    failed_when: worker_node.stdout not in metallb_controller_pod.stdout
 
   - name: Get the instance of the metallb operator
     shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
@@ -239,14 +239,14 @@
   - name: Check if the controller is getting created on worker 0
     shell: oc get pods -n metallb-system -o wide --no-headers | awk '{if ($1 ~ /^controller/) print $7}'
     register: metallb_controller_pod
-    until: "'$worker_nodes.stdout_lines[0]' in metallb_controller_pod.stdout"
+    until: worker_nodes.stdout_lines[0] in metallb_controller_pod.stdout
     retries: 5
     delay: 20
 
   - name: Check if the speaker pod is getting created on worker 1
     shell: oc get pods -n metallb-system -o wide --no-headers | awk '{if ($1 ~ /^speaker/) print $7}'
     register: metallb_speaker_pod
-    until: "'$worker_nodes.stdout_lines[1]' in metallb_speaker_pod.stdout"
+    until: worker_nodes.stdout_lines[1] in metallb_speaker_pod.stdout
     retries: 5
     delay: 20
 
@@ -300,14 +300,14 @@
   - name: Check if the controller is getting created on worker 0
     shell: oc get pods -n metallb-system -o wide --no-headers | awk '{if ($1 ~ /^controller/) print $7}'
     register: metallb_controller_pod
-    until: "'$worker_nodes.stdout_lines[0]' in metallb_controller_pod.stdout"
+    until: worker_nodes.stdout_lines[0] in metallb_controller_pod.stdout
     retries: 5
     delay: 20
 
   - name: Check if the speaker pod is getting created on worker 1
     shell: oc get pods -n metallb-system -o wide --no-headers | awk '{if ($1 ~ /^speaker/) print $7}'
     register: metallb_speaker_pod
-    until: "'$worker_nodes.stdout_lines[1]' in metallb_speaker_pod.stdout"
+    until: worker_nodes.stdout_lines[1] in metallb_speaker_pod.stdout
     retries: 5
     delay: 20
 
@@ -457,7 +457,7 @@
   - name: Check if the speakers are getting created on a different node than the pod with label
     shell: oc get pods -n metallb-system -o wide --no-headers | awk '{if (($1 ~ /^speaker/) && ($3=="Running")) print $7}'
     register: metallb_speaker_node
-    failed_when: "'$nginx_node.stdout' in metallb_speaker_node.stdout"
+    failed_when: nginx_node.stdout in metallb_speaker_node.stdout
 
   - name: Get the instance of the metallb operator
     shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
