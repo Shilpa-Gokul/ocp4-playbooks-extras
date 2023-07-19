@@ -1,6 +1,10 @@
 ---
 # tasks file for playbooks/roles/ocp-metallb-operator
 
+- set_fact:
+    github_username: "{{ lookup('ansible.builtin.env','GITHUB_USERNAME') }}"
+    github_personal_access_token: "{{ lookup('ansible.builtin.env','GITHUB_ACCESS_TOKEN') }}"
+
 - name: Check if cluster operators and nodes are healthy
   include_role:
     name: check-cluster-health
@@ -142,7 +146,41 @@
 
   when: metallb_install_operator or metallb_e2e
 
-- name: Run e2e test cases
+- name: Run e2e test cases from openshift-tests-private repository
+  block:
+  - fail:
+      msg: "Please set the environment variables GITHUB_USERNAME and GITHUB_ACCESS_TOKEN"
+    when: github_username == "" and github_personal_access_token == ""
+
+  - name: Clone the git repo
+    git:
+      repo: "https://{{ github_username }}:{{ github_personal_access_token }}@github.com/{{ openshift_tests_private_repository | urlsplit('path') }}"
+      dest: "{{ metallb_directory }}/openshift-tests-private"
+      version: "{{ openshift_tests_private_git_branch }}"
+      force: true
+
+  - name: Run make build command at target
+    make:
+      chdir: "{{ metallb_directory }}/openshift-tests-private"
+      target: build
+
+  - name: Check if the binary is created
+    shell: ls -hl ./bin/extended-platform-tests | wc -l
+    args:
+      chdir: "{{ metallb_directory }}/openshift_tests_private"
+    register: bin_output
+    failed_when: bin_output|int != 1
+
+  - name: Run the e2e test command
+    shell: "./bin/extended-platform-tests run all --dry-run | 
+        grep '43074\\|46560\\|43075\\|53333' | 
+        ./bin/extended-platform-tests run -f - -o ../e2e-test/metallb-e2e-test-summary.txt"
+    args:
+      chdir: "{{ metallb_directory }}/openshift-tests-private"
+  environment: "{{ metallb_e2e_env }}"
+  when: metallb_e2
+
+- name: Run e2e test cases from metallb-operator repository
   block:
     - name: Get the instance of the metallb operator
       shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"

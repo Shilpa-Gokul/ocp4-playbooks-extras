@@ -26,6 +26,8 @@ Role Variables
 | metallb_directory            | no       | `/tmp/metallb`                                               | Working directory for MetalLB Operator                                                                                         |
 | metallb_golang_tarball       | no       | https://go.dev/dl/go1.18.6.linux-ppc64le.tar.gz              | HTTPS URL for golang tarball                                                                                                   |
 | metallb_e2e                  | no       | false                                                        | Set it to true to run e2e                                                                                                      |
+| openshift_tests_private_repository | no | https://github.com/openshift/openshift-tests-private.git     | Github repository for openshift tests private
+| openshift_tests_private_git_branch | no | master                                                       | Git branch for the openshift repo
 | metallb_e2e_git_repository   | no       | https://github.com/openshift/metallb-operator.git            | Git repository for e2e tests                                                                                                   |
 | metallb_git_branch           | no       | main                                                         | Git branch for e2e                                                                                                             |
 | metallb_cleanup              | no       | true                                                         | Flag is used to clean MetalLB Operator resources                                                                               |
@@ -34,6 +36,14 @@ Role Variables
 | test_image                   | yes      | quay.io/openshifttest/hello-openshift:1.2.0                  | Test image to deploy sample pod                                                                                                |
 | l2_address                   | yes      |                                                              | 2 IPV4 addresses for creating Layer 2 address pool                                                                             |
 | bgp_address                  | yes      |                                                              | 1 IPV4 address for creating BGP address pool                                                                                   |
+
+Environment Variables
+---------------------
+
+| Variable             | Required       | Comments
+|----------------------|----------------|--------------------------------------------
+| GITHUB_USERNAME      | yes            | Public GitHub account username to which the repository access granted.
+| GITHUB_ACCESS_TOKEN  | yes            | GitHub personal access token to clone the repository.
 
 Dependencies
 ------------
