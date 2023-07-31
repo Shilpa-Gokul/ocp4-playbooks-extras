@@ -164,6 +164,27 @@
       go_tarball: "{{ metallb_golang_tarball }}"
       golang_path: "/usr/local"
 
+  - name: Setup catalog source for qe-app-registry
+    block:
+      - name: Include the global-secret-update role
+        include_role:
+          name: global-secret-update
+        when: metallb_enable_global_secret
+
+      - name: Set fact variable for catalog source name
+        set_fact:
+          metallb_catalogsource: "metallb-custom-catalogsource"
+
+      - name: Include role to create image content source policy and catalog source
+        include_role:
+          name: set-custom-catalogsource
+        vars:
+          custom_catalogsource_name: "{{ qe_catalog_source }}"
+          custom_catalogsource_display_name: "MetalLB Operator QE catalog source"
+          custom_catalogsource_image: "{{ qe_catalog_source_image }}"
+    when: qe_catalog_source_image != '' and qe_catalog_source_image != None
+
+
   - name: Clone the git repo
     git:
       repo: "https://{{ github_username }}:{{ github_personal_access_token }}@github.com/{{ openshift_tests_private_repository | urlsplit('path') }}"
