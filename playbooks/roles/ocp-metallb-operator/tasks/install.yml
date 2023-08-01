@@ -173,7 +173,7 @@
 
       - name: Set fact variable for catalog source name
         set_fact:
-          metallb_catalogsource: "metallb-custom-catalogsource"
+          qe_catalog_source: "metallb-QE-custom-catalogsource"
 
       - name: Include role to create image content source policy and catalog source
         include_role:
@@ -193,9 +193,9 @@
       force: true
 
   - name: Run make build command at target
-    make:
+    shell: make
+    args:
       chdir: "{{ metallb_directory }}/openshift-tests-private"
-      target: build
 
   - name: Check if the binary is created
     shell: ls -hl {{ metallb_directory }}/openshift-tests-private/bin/extended-platform-tests | wc -l
@@ -228,18 +228,6 @@
         name: "{{ metallb_instance.stdout }}"
         namespace: metallb-system
       when: metallb_instance.stdout|length > 0
-
-    - name: Install dependencies for running e2e tests
-      dnf:
-        name: make
-        state: present
-
-    - name: Include role for installation of Go lang
-      include_role:
-        name: golang-installation
-      vars:
-        go_tarball: "{{ metallb_golang_tarball }}"
-        golang_path: "/usr/local"
 
     - name: Clone the metallb-operator repository
       git:
