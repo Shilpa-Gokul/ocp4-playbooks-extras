@@ -144,7 +144,7 @@
       retries: 10
       delay: 60
 
-  when: metallb_install_operator or metallb_e2e
+  when: metallb_install_operator
 
 - name: Run e2e test cases from openshift-tests-private repository
   block:
@@ -170,10 +170,6 @@
         include_role:
           name: global-secret-update
         when: metallb_enable_global_secret
-
-      - name: Set fact variable for catalog source name
-        set_fact:
-          qe_catalog_source: "metallb-QE-custom-catalogsource"
 
       - name: Include role to create image content source policy and catalog source
         include_role:
