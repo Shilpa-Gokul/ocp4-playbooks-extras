@@ -210,25 +210,14 @@
 
 - name: Run e2e test cases from metallb-operator repository
   block:
-    - name: Get the instance of the metallb operator
-      shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
-      register: metallb_instance
-      ignore_errors: true
-
-    - name: Delete the existing instance of the metallb operator as the e2e tests creates a new instance
-      kubernetes.core.k8s:
-        state: absent
-        api_version: metallb.io/v1beta1
-        kind: MetalLB
-        name: "{{ metallb_instance.stdout }}"
-        namespace: metallb-system
-      when: metallb_instance.stdout|length > 0
+    - name: Delete the instance of metallb operator
+      include_tasks: { { playbook_dir } }/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
 
     - name: Clone the metallb-operator repository
       git:
         repo: "{{ metallb_e2e_git_repository }}"
         dest: "{{ metallb_directory }}/metallb-operator"
-        version: "{{ metallb_git_branch }}"
+        version: "{{ metallb_e2e_git_branch }}"
 
     - name: Run metallb-operator e2e tests
       shell: make test-e2e > {{ metallb_directory }}/metallb_e2e_output.txt

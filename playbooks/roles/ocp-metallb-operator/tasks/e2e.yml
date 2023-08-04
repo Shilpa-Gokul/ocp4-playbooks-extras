@@ -130,19 +130,8 @@
     register: taint_output
     ignore_errors: true
 
-  - name: Get the instance of the metallb operator
-    shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
-    register: metallb_instance
-    ignore_errors: true
-
-  - name: Delete the instance of the metallb operator
-    kubernetes.core.k8s:
-      state: absent
-      api_version: metallb.io/v1beta1
-      kind: MetalLB
-      name: "{{ metallb_instance.stdout }}"
-      namespace: metallb-system
-    when: metallb_instance.stdout|length > 0
+  - name: Delete the instance of metallb operator
+    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
   when: metallb_e2e
 
 - name: Validate controller and pod can be scheduled based on node selectors
@@ -177,19 +166,8 @@
     register: metallb_controller_pod
     failed_when: worker_node.stdout not in metallb_controller_pod.stdout
 
-  - name: Get the instance of the metallb operator
-    shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
-    register: metallb_instance
-    ignore_errors: true
-
-  - name: Delete the instance of the metallb operator
-    kubernetes.core.k8s:
-      state: absent
-      api_version: metallb.io/v1beta1
-      kind: MetalLB
-      name: "{{ metallb_instance.stdout }}"
-      namespace: metallb-system
-    when: metallb_instance.stdout|length > 0
+  - name: Delete the instance of metallb operator
+    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
   when: metallb_e2e
 
 - name: Validate controller and speaker pods can be scheduled based on affinity
@@ -250,19 +228,8 @@
     retries: 5
     delay: 20
 
-  - name: Get the instance of the metallb operator
-    shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
-    register: metallb_instance
-    ignore_errors: true
-
-  - name: Delete the instance of the metallb operator
-    kubernetes.core.k8s:
-      state: absent
-      api_version: metallb.io/v1beta1
-      kind: MetalLB
-      name: "{{ metallb_instance.stdout }}"
-      namespace: metallb-system
-    when: metallb_instance.stdout|length > 0
+  - name: Delete the instance of metallb operator
+    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
 
   # Create a metalLB CR based on node affinity using matchFields
   - name: Create a metallb CR with controller and speaker pod based on ( required) node affinity using matchFields
@@ -311,19 +278,8 @@
     retries: 5
     delay: 20
 
-  - name: Get the instance of the metallb operator
-    shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
-    register: metallb_instance
-    ignore_errors: true
-
-  - name: Delete the instance of the metallb operator
-    kubernetes.core.k8s:
-      state: absent
-      api_version: metallb.io/v1beta1
-      kind: MetalLB
-      name: "{{ metallb_instance.stdout }}"
-      namespace: metallb-system
-    when: metallb_instance.stdout|length > 0
+  - name: Delete the instance of metallb operator
+    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
 
   # Create a metalLB CR to ensure pod affinity is honored for controller and speaker
   - name: Create a sample nginx pod in same namespace
@@ -396,19 +352,8 @@
     retries: 5
     delay: 20
 
-  - name: Get the instance of the metallb operator
-    shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
-    register: metallb_instance
-    ignore_errors: true
-
-  - name: Delete the instance of the metallb operator
-    kubernetes.core.k8s:
-      state: absent
-      api_version: metallb.io/v1beta1
-      kind: MetalLB
-      name: "{{ metallb_instance.stdout }}"
-      namespace: metallb-system
-    when: metallb_instance.stdout|length > 0
+  - name: Delete the instance of metallb operator
+    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
 
   # Create metalLB CR with pod anti affinity rule
   - name: Create a metallb CR with with pod anti affinity rule
@@ -459,19 +404,8 @@
     register: metallb_speaker_node
     failed_when: nginx_node.stdout in metallb_speaker_node.stdout
 
-  - name: Get the instance of the metallb operator
-    shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
-    register: metallb_instance
-    ignore_errors: true
-
-  - name: Delete the instance of the metallb operator
-    kubernetes.core.k8s:
-      state: absent
-      api_version: metallb.io/v1beta1
-      kind: MetalLB
-      name: "{{ metallb_instance.stdout }}"
-      namespace: metallb-system
-    when: metallb_instance.stdout|length > 0
+  - name: Delete the instance of metallb operator
+    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
 
   - name: Delete the nginx pod created during the test
     kubernetes.core.k8s:
@@ -667,19 +601,8 @@
   - name: Delete the project
     shell: oc delete project test1
 
-  - name: Get the instance of the metallb operator
-    shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
-    register: metallb_instance
-    ignore_errors: true
-
-  - name: Delete the instance of the metallb operator
-    kubernetes.core.k8s:
-      state: absent
-      api_version: metallb.io/v1beta1
-      kind: MetalLB
-      name: "{{ metallb_instance.stdout }}"
-      namespace: metallb-system
-    when: metallb_instance.stdout|length > 0
+  - name: Delete the instance of metallb operator
+    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
   when: metallb_e2e
 
 # Validate controller and speaker pods are scheduled on nodes based priority class and run time class
@@ -737,19 +660,8 @@
     register: metallb_pods
     failed_when: metallb_pods.stdout|int < 0
 
-  - name: Get the instance of the metallb operator
-    shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
-    register: metallb_instance
-    ignore_errors: true
-
-  - name: Delete the instance of the metallb operator
-    kubernetes.core.k8s:
-      state: absent
-      api_version: metallb.io/v1beta1
-      kind: MetalLB
-      name: "{{ metallb_instance.stdout }}"
-      namespace: metallb-system
-    when: metallb_instance.stdout|length > 0
+  - name: Delete the instance of metallb operator
+    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
 
   - name: Delete the priority class
     kubernetes.core.k8s:
@@ -1291,19 +1203,8 @@
           name: ip-addresspool-l2-a
           namespace: metallb-system
 
-  - name: Get the instance of the metallb operator
-    shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
-    register: metallb_instance
-    ignore_errors: true
-
-  - name: Delete the instance of the metallb operator
-    kubernetes.core.k8s:
-      state: absent
-      api_version: metallb.io/v1beta1
-      kind: MetalLB
-      name: "{{ metallb_instance.stdout }}"
-      namespace: metallb-system
-    when: metallb_instance.stdout|length > 0
+  - name: Delete the instance of metallb operator
+    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
   when: metallb_e2e
 
 # Verify the LoadBalancer service uses the right protocol based on address available from L2 or BGP address pool
@@ -1691,17 +1592,6 @@
           name: address-pool-silver-l2
           namespace: metallb-system
 
-  - name: Get the instance of the metallb operator
-    shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
-    register: metallb_instance
-    ignore_errors: true
-
-  - name: Delete the instance of the metallb operator
-    kubernetes.core.k8s:
-      state: absent
-      api_version: metallb.io/v1beta1
-      kind: MetalLB
-      name: "{{ metallb_instance.stdout }}"
-      namespace: metallb-system
-    when: metallb_instance.stdout|length > 0
+  - name: Delete the instance of metallb operator
+    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
   when: metallb_e2e
