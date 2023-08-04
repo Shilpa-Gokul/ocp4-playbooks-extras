@@ -14,6 +14,7 @@
     shell: oc get operatorgroup -n metallb-system | awk '{ if ($1 ~ /metallb/) print $1 }'
     register: metallb_operator_group
 
+<<<<<<< HEAD
   - name: Get the instance of the metallb operator
     shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
     register: metallb_instance
@@ -27,6 +28,10 @@
       name: "{{ metallb_instance.stdout }}"
       namespace: metallb-system
     when: metallb_instance.stdout|length > 0
+=======
+  - name: Delete the instance of metallb operator
+    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
+>>>>>>> upstream/metallbOP
 
   - name: Delete the subscription if exists
     kubernetes.core.k8s:

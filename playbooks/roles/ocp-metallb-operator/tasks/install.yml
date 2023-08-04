@@ -11,25 +11,25 @@
 
 - name: Deploy the MetalLB Operator
   block:
-    - name: Setup custom catalog source
-      block:
-        - name: Include the global-secret-update role
-          include_role:
-            name: global-secret-update
-          when: metallb_enable_global_secret
+  - name: Setup custom catalog source
+    block:
+      - name: Include the global-secret-update role
+        include_role:
+          name: global-secret-update
+        when: metallb_enable_global_secret
 
-        - name: Set fact variable for catalog source name
-          set_fact:
-            metallb_catalogsource: "metallb-custom-catalogsource"
+      - name: Set fact variable for catalog source name
+        set_fact:
+          metallb_catalogsource: "metallb-custom-catalogsource"
 
-        - name: Include role to create image content source policy and catalog source
-          include_role:
-            name: set-custom-catalogsource
-          vars:
-            custom_catalogsource_name: "{{ metallb_catalogsource }}"
-            custom_catalogsource_display_name: "MetalLB Operator catalog source"
-            custom_catalogsource_image: "{{ metallb_catalogsource_image }}"
-      when: metallb_catalogsource_image != '' and metallb_catalogsource_image != None
+      - name: Include role to create image content source policy and catalog source
+        include_role:
+          name: set-custom-catalogsource
+        vars:
+          custom_catalogsource_name: "{{ metallb_catalogsource }}"
+          custom_catalogsource_display_name: "MetalLB Operator catalog source"
+          custom_catalogsource_image: "{{ metallb_catalogsource_image }}"
+    when: metallb_catalogsource_image != '' and metallb_catalogsource_image != None
 
     - name: Create namespace for metallb operator
       kubernetes.core.k8s:
@@ -61,7 +61,7 @@
             name: metallb-system
             namespace: metallb-system
               #spec:
-              #targetNamespaces:
+            #targetNamespaces:
             #- metallb-system
 
     - name: Create subscription for metallb operator
@@ -166,20 +166,19 @@
 
   - name: Setup catalog source for qe-app-registry
     block:
-      - name: Include the global-secret-update role
-        include_role:
-          name: global-secret-update
-        when: metallb_enable_global_secret
+    - name: Include the global-secret-update role
+      include_role:
+        name: global-secret-update
+      when: metallb_enable_global_secret
 
-      - name: Include role to create image content source policy and catalog source
-        include_role:
-          name: set-custom-catalogsource
-        vars:
-          custom_catalogsource_name: "{{ qe_catalog_source }}"
-          custom_catalogsource_display_name: "MetalLB Operator QE catalog source"
-          custom_catalogsource_image: "{{ qe_catalog_source_image }}"
+    - name: Include role to create image content source policy and catalog source
+      include_role:
+        name: set-custom-catalogsource
+      vars:
+        custom_catalogsource_name: "{{ qe_catalog_source }}"
+        custom_catalogsource_display_name: "MetalLB Operator QE catalog source"
+        custom_catalogsource_image: "{{ qe_catalog_source_image }}"
     when: qe_catalog_source_image != '' and qe_catalog_source_image != None
-
 
   - name: Clone the git repo
     git:
@@ -202,34 +201,23 @@
 
   - name: Run the e2e test command
     shell: "./bin/extended-platform-tests run all --dry-run | 
-        grep '43074\\|46560\\|43075\\|53333' | 
-        ./bin/extended-platform-tests run -f - -o ../metallb-e2e-test-summary.txt"
+      grep '43074\\|46560\\|43075\\|53333' | 
+      ./bin/extended-platform-tests run -f - -o ../metallb-e2e-test-summary.txt"
     args:
       chdir: "{{ metallb_directory }}/openshift-tests-private"
-  environment: "{{ metallb_e2e_env }}"
+    environment: "{{ metallb_e2e_env }}"
   when: metallb_e2e
 
 - name: Run e2e test cases from metallb-operator repository
   block:
-    - name: Get the instance of the metallb operator
-      shell: oc get metallb -n metallb-system -ojsonpath="{.items[].metadata.name}"
-      register: metallb_instance
-      ignore_errors: true
-
-    - name: Delete the existing instance of the metallb operator as the e2e tests creates a new instance
-      kubernetes.core.k8s:
-        state: absent
-        api_version: metallb.io/v1beta1
-        kind: MetalLB
-        name: "{{ metallb_instance.stdout }}"
-        namespace: metallb-system
-      when: metallb_instance.stdout|length > 0
+    - name: Delete the instance of metallb operator
+      include_tasks: { { playbook_dir } }/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
 
     - name: Clone the metallb-operator repository
       git:
         repo: "{{ metallb_e2e_git_repository }}"
         dest: "{{ metallb_directory }}/metallb-operator"
-        version: "{{ metallb_git_branch }}"
+        version: "{{ metallb_e2e_git_branch }}"
 
     - name: Run metallb-operator e2e tests
       shell: make test-e2e > {{ metallb_directory }}/metallb_e2e_output.txt
@@ -244,6 +232,3 @@
         regexp: '\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])'
         replace: ""
   when: metallb_e2e
-
-
-
