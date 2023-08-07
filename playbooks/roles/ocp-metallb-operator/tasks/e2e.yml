@@ -131,7 +131,7 @@
     ignore_errors: true
 
   - name: Delete the instance of metallb operator
-    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
+    include_tasks: operator-cleanup.yaml
   when: metallb_e2e
 
 - name: Validate controller and pod can be scheduled based on node selectors
@@ -167,7 +167,7 @@
     failed_when: worker_node.stdout not in metallb_controller_pod.stdout
 
   - name: Delete the instance of metallb operator
-    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
+    include_tasks: operator-cleanup.yaml
   when: metallb_e2e
 
 - name: Validate controller and speaker pods can be scheduled based on affinity
@@ -229,7 +229,7 @@
     delay: 20
 
   - name: Delete the instance of metallb operator
-    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
+    include_tasks: operator-cleanup.yaml
 
   # Create a metalLB CR based on node affinity using matchFields
   - name: Create a metallb CR with controller and speaker pod based on ( required) node affinity using matchFields
@@ -279,7 +279,7 @@
     delay: 20
 
   - name: Delete the instance of metallb operator
-    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
+    include_tasks: operator-cleanup.yaml
 
   # Create a metalLB CR to ensure pod affinity is honored for controller and speaker
   - name: Create a sample nginx pod in same namespace
@@ -353,7 +353,7 @@
     delay: 20
 
   - name: Delete the instance of metallb operator
-    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
+    include_tasks: operator-cleanup.yaml
 
   # Create metalLB CR with pod anti affinity rule
   - name: Create a metallb CR with with pod anti affinity rule
@@ -405,7 +405,7 @@
     failed_when: nginx_node.stdout in metallb_speaker_node.stdout
 
   - name: Delete the instance of metallb operator
-    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
+    include_tasks: operator-cleanup.yaml
 
   - name: Delete the nginx pod created during the test
     kubernetes.core.k8s:
@@ -602,7 +602,7 @@
     shell: oc delete project test1
 
   - name: Delete the instance of metallb operator
-    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
+    include_tasks: operator-cleanup.yaml
   when: metallb_e2e
 
 # Validate controller and speaker pods are scheduled on nodes based priority class and run time class
@@ -661,7 +661,7 @@
     failed_when: metallb_pods.stdout|int < 0
 
   - name: Delete the instance of metallb operator
-    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
+    include_tasks: operator-cleanup.yaml
 
   - name: Delete the priority class
     kubernetes.core.k8s:
@@ -1174,37 +1174,25 @@
 
   # Delete the L2 advertisement and addresspool
   - name: Delete L2 advertisement
-    kubernetes.core.k8s:
-      state: absent
-      definition:
-        apiVersion: metallb.io/v1beta1
-        kind: L2Advertisement
-        metadata:
-          name: l2-adv
-          namespace: metallb-system
+    include_tasks: add-and-adv-cleanup.yml
+    vars:
+      kind: L2Advertisement
+      name: l2-adv
 
   - name: Delete L2 address pool
-    kubernetes.core.k8s:
-      state: absent
-      definition:
-        apiVersion: metallb.io/v1beta1
-        kind: IPAddressPool
-        metadata:
-          name: ip-addresspool-l2
-          namespace: metallb-system
+    include_tasks: add-and-adv-cleanup.yml
+    vars:
+      kind: IPAddressPool
+      name: ip-addresspool-l2
 
   - name: Delete L2 address pool
-    kubernetes.core.k8s:
-      state: absent
-      definition:
-        apiVersion: metallb.io/v1beta1
-        kind: IPAddressPool
-        metadata:
-          name: ip-addresspool-l2-a
-          namespace: metallb-system
+    include_tasks: add-and-adv-cleanup.yml
+    vars:
+      kind: IPAddressPool
+      name: ip-addresspool-l2-a
 
   - name: Delete the instance of metallb operator
-    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
+    include_tasks: operator-cleanup.yaml
   when: metallb_e2e
 
 # Verify the LoadBalancer service uses the right protocol based on address available from L2 or BGP address pool
@@ -1232,7 +1220,7 @@
   - name: Configure FRR on bastion
     shell: |
       FRRVER="{{ metallb_frr_ver }}"
-      curl -O "{{ metallb_frr_repo }}"
+      curl -O "{{ metallb_frr_rpm }}"
       sudo yum install ./$FRRVER*
       sudo yum install frr -y
       systemctl status frr
@@ -1573,25 +1561,17 @@
       namespace: test
 
   - name: Delete IP Address pool for bgp
-    kubernetes.core.k8s:
-      state: absent
-      definition:
-        apiVersion: metallb.io/v1beta1
-        kind: IPAddressPool
-        metadata:
-          name: address-pool-silver-bgp
-          namespace: metallb-system
+    include_tasks: add-and-adv-cleanup.yml
+    vars:
+      kind: IPAddressPool
+      name: address-pool-silver-bgp
 
   - name: Delete IP Address pool for layer2
-    kubernetes.core.k8s:
-      state: absent
-      definition:
-        apiVersion: metallb.io/v1beta1
-        kind: IPAddressPool
-        metadata:
-          name: address-pool-silver-l2
-          namespace: metallb-system
+    include_tasks: add-and-adv-cleanup.yml
+    vars:
+      kind: IPAddressPool
+      name: address-pool-silver-l2
 
   - name: Delete the instance of metallb operator
-    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
+    include_tasks: operator-cleanup.yaml
   when: metallb_e2e

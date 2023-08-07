@@ -38,7 +38,10 @@ This repository consists of additional ansible playbooks for the following:
 1. Deploy Kubernetes NMState Operator and run e2e
 1. Enable pod disruption budget (pdb)
 1. Scheduler profile configuration and run e2e tests
+<<<<<<< HEAD
+=======
 1. Cluster Resource Override Operator deployment and e2e test run
+>>>>>>> upstream/metallbOP
 1. Deploy MetalLB operator and run e2e
 
 ## Assumptions:

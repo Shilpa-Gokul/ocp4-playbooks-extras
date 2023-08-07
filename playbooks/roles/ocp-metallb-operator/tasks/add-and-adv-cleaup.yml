@@ -1,0 +1,10 @@
+---
+- name: Delete L2 address pool and adevertisment
+  kubernetes.core.k8s:
+    state: absent
+    definition:
+      apiVersion: metallb.io/v1beta1
+      kind: {{ kind }}
+      metadata:
+        name: {{ name }}
+        namespace: metallb-system

@@ -15,7 +15,7 @@
     register: metallb_operator_group
 
   - name: Delete the instance of metallb operator
-    include_tasks: {{ playbook_dir }}/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
+    include_tasks: operator-cleanup.yaml
 
   - name: Delete the subscription if exists
     kubernetes.core.k8s:
