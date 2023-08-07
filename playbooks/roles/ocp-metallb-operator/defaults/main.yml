@@ -18,5 +18,5 @@ openshift_tests_private_git_branch: "master"
 metallb_e2e_git_branch: "main"
 metallb_cleanup: true
 metallb_frr_ver: "frr-8"
-metallb_frr_repo: "https://rpm.frrouting.org/repo/{{metallb_frr_ver}}-repo-1-0.el9.noarch.rpm"
+metallb_frr_rpm: "https://rpm.frrouting.org/repo/{{metallb_frr_ver}}-repo-1-0.el9.noarch.rpm"
 test_image: "quay.io/openshifttest/hello-openshift:1.2.0"

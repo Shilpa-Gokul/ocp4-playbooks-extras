@@ -31,56 +31,56 @@
           custom_catalogsource_image: "{{ metallb_catalogsource_image }}"
     when: metallb_catalogsource_image != '' and metallb_catalogsource_image != None
 
-    - name: Create namespace for metallb operator
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            labels:
-              pod-security.kubernetes.io/audit: privileged
-              pod-security.kubernetes.io/enforce: privileged
-              pod-security.kubernetes.io/warn: privileged
-              security.openshift.io/scc.podSecurityLabelSync: "false"
-              kubernetes.io/metadata.name: metallb-system
-              name: metallb-system
+  - name: Create namespace for metallb operator
+    kubernetes.core.k8s:
+      state: present
+      definition:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          labels:
+            pod-security.kubernetes.io/audit: privileged
+            pod-security.kubernetes.io/enforce: privileged
+            pod-security.kubernetes.io/warn: privileged
+            security.openshift.io/scc.podSecurityLabelSync: "false"
+            kubernetes.io/metadata.name: metallb-system
             name: metallb-system
-          spec:
-            finalizers:
-              - kubernetes
+          name: metallb-system
+        spec:
+          finalizers:
+            - kubernetes
 
-    - name: Create operator group for metallb operator
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: operators.coreos.com/v1
-          kind: OperatorGroup
-          metadata:
-            generateName: metallb-system-
-            name: metallb-system
-            namespace: metallb-system
+  - name: Create operator group for metallb operator
+    kubernetes.core.k8s:
+      state: present
+      definition:
+        apiVersion: operators.coreos.com/v1
+        kind: OperatorGroup
+        metadata:
+          generateName: metallb-system-
+          name: metallb-system
+          namespace: metallb-system
               #spec:
             #targetNamespaces:
             #- metallb-system
 
-    - name: Create subscription for metallb operator
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: operators.coreos.com/v1alpha1
-          kind: Subscription
-          metadata:
-            labels:
-              operators.coreos.com/metallb-operator.metallb-system: ""
-            name: metallb-operator-sub
-            namespace: metallb-system
-          spec:
-            channel: "{{ metallb_upgrade_channel }}"
-            installPlanApproval: Automatic
-            name: metallb-operator
-            source: "{{ metallb_catalogsource }}"
-            sourceNamespace: openshift-marketplace
+  - name: Create subscription for metallb operator
+    kubernetes.core.k8s:
+      state: present
+      definition:
+        apiVersion: operators.coreos.com/v1alpha1
+        kind: Subscription
+        metadata:
+          labels:
+            operators.coreos.com/metallb-operator.metallb-system: ""
+          name: metallb-operator-sub
+          namespace: metallb-system
+        spec:
+          channel: "{{ metallb_upgrade_channel }}"
+          installPlanApproval: Automatic
+          name: metallb-operator
+          source: "{{ metallb_catalogsource }}"
+          sourceNamespace: openshift-marketplace
   when: metallb_install_operator
 
 - name: Validate operator deployment and deploy instance of the metallb operator
@@ -211,7 +211,7 @@
 - name: Run e2e test cases from metallb-operator repository
   block:
     - name: Delete the instance of metallb operator
-      include_tasks: { { playbook_dir } }/roles/ocp-metallb-operator/tasks/operator-cleanup.yaml
+      include_tasks: operator-cleanup.yaml
 
     - name: Clone the metallb-operator repository
       git:
